@@ -45,7 +45,7 @@ class DataAccess:
                 yield(entity)
 
             if NEXT_PAGE is not False:
-                RESULT_OFFSET+=RESULT_RECORD_COUNT
+                RESULT_OFFSET+=int(RESULT_RECORD_COUNT)
 
             else:
                 NEXT_PAGE= False
