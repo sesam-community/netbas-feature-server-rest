@@ -19,23 +19,27 @@ class DataAccess:
  ##       NEXT_PAGE = True
         NEXT_PAGE = True
         page_counter = 1
+        headers={"Content-Type":"application/json","Accept":"application/json"}
         RESULT_OFFSET = 0
         RESULT_RECORD_COUNT = os.environ.get('RESULT_RECORD_COUNT')
         while NEXT_PAGE is not False:
 
-            URL = os.environ.get('BASE_URL') + path + '/query?outFields=*&resultOffset=' + str(RESULT_OFFSET) + '&resultRecordCount=' + str(RESULT_RECORD_COUNT)
+            URL = os.environ.get('BASE_URL') + path + '/query?outFields=*&resultOffset=' + str(RESULT_OFFSET) + '&resultRecordCount=' + str(RESULT_RECORD_COUNT) + '&f=json'
             if os.environ.get('sleep') is not None:
-                logger.info("sleeping for %s milliseconds", os.environ.get('sleep') )
+                logger.info("sleeping for %s milliseconds", os.environ.get('sleep'))
                 sleep(float(os.environ.get('sleep')))
 
             logger.info("Fetching data from url: %s", URL)
-            req = requests.get(URL)
+            req = requests.get(URL, headers=headers)
+            logger.info(req.text)
+            logger.info(req.status_code)
 
             if req.status_code != 200:
                 logger.error("Unexpected response status code: %d with response text %s" % (req.status_code, req.text))
                 raise AssertionError ("Unexpected response status code: %d with response text %s"%(req.status_code, req.text))
-            res = dotdictify.dotdictify(json.loads(req.text))
-            NEXT_PAGE = res.exceededTransferLimit
+            res = req.json()
+            logger.info(res)
+            NEXT_PAGE = res.get('exceededTransferLimit')
             for entity in res.get(os.environ.get("ENTITIES_PATH")):
 
                 yield(entity)
