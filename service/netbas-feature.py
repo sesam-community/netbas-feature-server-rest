@@ -34,7 +34,7 @@ class DataAccess:
             logger.info(req.text)
             logger.info(req.status_code)
 
-            if req.ok:
+            if not req.ok:
                 logger.error("Unexpected response status code: %d with response text %s" % (req.status_code, req.text))
                 raise AssertionError ("Unexpected response status code: %d with response text %s"%(req.status_code, req.text))
             res = json.loads(req.content.decode('utf-8-sig'))
