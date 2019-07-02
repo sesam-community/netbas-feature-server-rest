@@ -34,10 +34,10 @@ class DataAccess:
             logger.info(req.text)
             logger.info(req.status_code)
 
-            if req.status_code != 200:
+            if req.ok:
                 logger.error("Unexpected response status code: %d with response text %s" % (req.status_code, req.text))
                 raise AssertionError ("Unexpected response status code: %d with response text %s"%(req.status_code, req.text))
-            res = req.json()
+            res = json.loads(req.content.decode('utf-8-sig'))
             logger.info(res)
             NEXT_PAGE = res.get('exceededTransferLimit')
             for entity in res.get(os.environ.get("ENTITIES_PATH")):
