@@ -23,7 +23,7 @@ class DataAccess:
         RESULT_RECORD_COUNT = os.environ.get('RESULT_RECORD_COUNT')
         while NEXT_PAGE is not False:
 
-            URL = os.environ.get('BASE_URL') + path + RESULT_OFFSET + RESULT_RECORD_COUNT
+            URL = os.environ.get('BASE_URL') + path + '&resultOffset=' + RESULT_OFFSET + '&resultRecordCount=' + RESULT_RECORD_COUNT
             if os.environ.get('sleep') is not None:
                 logger.info("sleeping for %s milliseconds", os.environ.get('sleep') )
                 sleep(float(os.environ.get('sleep')))
