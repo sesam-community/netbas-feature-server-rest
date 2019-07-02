@@ -1,2 +1,3 @@
 Flask==1.0.2
 CherryPy
+requests==2.20.0
