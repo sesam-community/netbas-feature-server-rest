@@ -1,0 +1,15 @@
+
+sudo: required
+
+
+language: python
+python:
+  -  "3.5"
+
+services:
+  - docker
+
+script: true
+
+after_success:
+- bash <(curl -s https://raw.githubusercontent.com/4hlberg/travis-docker-build-sh/master/after_success.sh)
