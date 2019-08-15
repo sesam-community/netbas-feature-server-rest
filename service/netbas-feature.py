@@ -5,7 +5,6 @@ import logging
 import json
 import cherrypy
 from time import sleep
-import dotdictify
 
 
 app = Flask(__name__)
@@ -31,8 +30,6 @@ class DataAccess:
 
             logger.info("Fetching data from url: %s", URL)
             req = requests.get(URL, headers=headers)
-            logger.info(req.text)
-            logger.info(req.status_code)
 
             if not req.ok:
                 logger.error("Unexpected response status code: %d with response text %s" % (req.status_code, req.text))
