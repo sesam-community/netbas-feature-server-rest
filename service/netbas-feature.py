@@ -14,8 +14,6 @@ class DataAccess:
 #main get function, will probably run most via path:path
     def __get_all_paged_entities(self, path, args):
         logger.info("Fetching data from paged url: %s", path)
- ##       URL = os.environ.get('BASE_URL') + path + os.environ.get('RESULT_OFFSET') + os.environ.get('RESULT_RECORD_COUNT')
- ##       NEXT_PAGE = True
         NEXT_PAGE = True
         page_counter = 1
         headers={"Content-Type":"application/json","Accept":"application/json"}
@@ -66,15 +64,6 @@ def stream_json(clean):
         yield json.dumps(row)
     yield ']'
 
-# def set_updated(entity, args):
-#     since_path = args.get("since_path")
-#
-#     if since_path is not None:
-#         b = Dotdictify(entity)
-#         entity["_updated"] = b.get(since_path)
-
-
-
 @app.route("/<path:path>", methods=["GET"])
 def get(path):
 
@@ -116,6 +105,3 @@ if __name__ == '__main__':
     # Start the CherryPy WSGI web server
     cherrypy.engine.start()
     cherrypy.engine.block()
-#app.run(threaded=True, debug=True, host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
-##if __name__ == '__main__':
-##    app.run(debug=True, host='0.0.0.0', threaded=True, port=os.environ.get('port',5000))
