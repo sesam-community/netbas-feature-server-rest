@@ -6,22 +6,58 @@ import json
 import cherrypy
 from time import sleep
 
-
 app = Flask(__name__)
+
+# Environment variables
+required_env_vars = ["BASE_URL", "ENTITIES_PATH", "NEXT_PAGE", "RESULT_RECORD_COUNT"]
+optional_env_vars = ["LOG_LEVEL", "PORT"]
+
+class AppConfig(object):
+    pass
+
+
+config = AppConfig()
+
+# load variables
+missing_env_vars = list()
+for env_var in required_env_vars:
+    value = os.getenv(env_var)
+    if not value:
+        missing_env_vars.append(env_var)
+    setattr(config, env_var, value)
+
+for env_var in optional_env_vars:
+    value = os.getenv(env_var)
+    if value:
+        setattr(config, env_var, value)
+
+# Set up logging
+format_string = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+logger = logging.getLogger('netbas-feature-server')
+stdout_handler = logging.StreamHandler()
+stdout_handler.setFormatter(logging.Formatter(format_string))
+logger.addHandler(stdout_handler)
+
+loglevel = getattr(config, "LOG_LEVEL", "INFO")
+level = logging.getLevelName(loglevel.upper())
+if not isinstance(level, int):
+    logger.warning("Unsupported log level defined. Using default level 'INFO'")
+    level = logging.INFO
+logger.setLevel(level)
 
 class DataAccess:
 
-#main get function, will probably run most via path:path
+#main get function, uses the documentation for getting all data fields that are relevant and not static. path is input from pipe.
     def __get_all_paged_entities(self, path, args):
         logger.info("Fetching data from paged url: %s", path)
         NEXT_PAGE = True
         page_counter = 1
         headers={"Content-Type":"application/json","Accept":"application/json"}
         RESULT_OFFSET = 0
-        RESULT_RECORD_COUNT = os.environ.get('RESULT_RECORD_COUNT')
+        RESULT_RECORD_COUNT = getattr(config, 'RESULT_RECORD_COUNT', 1000)
         while NEXT_PAGE is not False:
 
-            URL = os.environ.get('BASE_URL') + path + '/query?outFields=*&resultOffset=' + str(RESULT_OFFSET) + '&resultRecordCount=' + str(RESULT_RECORD_COUNT) + '&f=json'
+            URL = getattr(config, 'BASE_URL') + path + '/query?outFields=*&resultOffset=' + str(RESULT_OFFSET) + '&resultRecordCount=' + str(RESULT_RECORD_COUNT) + '&f=json'
             if os.environ.get('sleep') is not None:
                 logger.info("sleeping for %s milliseconds", os.environ.get('sleep'))
                 sleep(float(os.environ.get('sleep')))
@@ -34,8 +70,8 @@ class DataAccess:
                 raise AssertionError ("Unexpected response status code: %d with response text %s"%(req.status_code, req.text))
             res = json.loads(req.content.decode('utf-8-sig'))
             logger.info(res)
-            NEXT_PAGE = res.get('exceededTransferLimit')
-            for entity in res.get(os.environ.get("ENTITIES_PATH")):
+            NEXT_PAGE = res.get(getattr(config, "NEXT_PAGE"))
+            for entity in res.get(getattr(config, "ENTITIES_PATH", "features")):
 
                 yield(entity)
 
@@ -79,18 +115,6 @@ def get(path):
 
 
 if __name__ == '__main__':
-    # Set up logging
-    format_string = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    logger = logging.getLogger('netbas-feature-service')
-
-    # Log to stdout
-    stdout_handler = logging.StreamHandler()
-    stdout_handler.setFormatter(logging.Formatter(format_string))
-    logger.addHandler(stdout_handler)
-
-    loglevel = os.environ.get("LOGLEVEL", "INFO")
-    logger.setLevel(loglevel)
-
     cherrypy.tree.graft(app, '/')
 
     # Set the configuration of the web server to production mode
@@ -98,7 +122,7 @@ if __name__ == '__main__':
         'environment': 'production',
         'engine.autoreload_on': False,
         'log.screen': True,
-        'server.socket_port': int(os.environ.get("PORT", 5000)),
+        'server.socket_port': int(getattr(config, "PORT", 5000)),
         'server.socket_host': '0.0.0.0'
     })
 

@@ -1,8 +1,11 @@
 # netbas-feature-server-rest
-For incremental sync towards feature-server layer in front of netbas
+
+For incremental sync towards feature-server layer in front of netbas.
+
+Environment variables that are required are BASE_URL, NEXT_PAGE, ENTITIES_PATH and RESULT_RECORD_COUNT 
 
 # System config
-
+```
 {
 	"_id":"netbas-feature-server", 
 	"type": "system:microservice",
@@ -18,9 +21,10 @@ For incremental sync towards feature-server layer in front of netbas
 	},
 	"verify_ssl":true
 }
-
+```
 
 # Pipe config
+```
 {
 	"_id": "netbas-object",
 	"type":"pipe",
@@ -30,4 +34,4 @@ For incremental sync towards feature-server layer in front of netbas
 		"url": "feature"
 	}
 }
-
+```
