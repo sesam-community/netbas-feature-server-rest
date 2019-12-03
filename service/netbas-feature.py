@@ -7,14 +7,13 @@ import cherrypy
 from time import sleep
 
 app = Flask(__name__)
-
+ 
 # Environment variables
 required_env_vars = ["BASE_URL", "ENTITIES_PATH", "NEXT_PAGE", "RESULT_RECORD_COUNT"]
 optional_env_vars = ["LOG_LEVEL", "PORT"]
 
 class AppConfig(object):
     pass
-
 
 config = AppConfig()
 
@@ -91,14 +90,6 @@ class DataAccess:
 
 data_access_layer = DataAccess()
 
-def spatial_ref(headers, path, RESULT_OFFSET, RESULT_RECORD_COUNT):
-    URL = getattr(config, 'BASE_URL') + path + '/query?outFields=*&resultOffset=' + str(RESULT_OFFSET) + '&resultRecordCount=' + str(RESULT_RECORD_COUNT) + '&f=json'
-    req = requests.get(URL, headers=headers)       
-    convert_to_text = req.text
-    convert_to_json = json.loads(convert_to_text)
-    spatial_ref = convert_to_json['spatialReference']        
-    return spatial_ref
-
 def stream_json(clean):
     first = True
     yield '['
@@ -109,6 +100,13 @@ def stream_json(clean):
             first = False
         yield json.dumps(row)
     yield ']'
+
+def spatial_ref(headers, path, RESULT_OFFSET, RESULT_RECORD_COUNT):
+    response = requests.get(target_url)
+    response_json = json.loads(response.text)
+    spatial_reference = response_json['spatialReference']
+    return spatial_reference
+          
 
 @app.route("/<path:path>", methods=["GET"])
 def get(path):
