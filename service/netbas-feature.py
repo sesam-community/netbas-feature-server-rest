@@ -71,9 +71,12 @@ class DataAccess:
             res = json.loads(req.content.decode('utf-8-sig'))
             logger.info(res)
             NEXT_PAGE = res.get(getattr(config, "NEXT_PAGE"))
+            spatial_entity = spatial_ref(headers, path, RESULT_OFFSET, RESULT_RECORD_COUNT)
             for entity in res.get(getattr(config, "ENTITIES_PATH", "features")):
 
                 yield(entity)
+                yield ','
+                yield(spatial_entity)
 
             if NEXT_PAGE is not False:
                 RESULT_OFFSET+=int(RESULT_RECORD_COUNT)
@@ -88,6 +91,13 @@ class DataAccess:
 
 data_access_layer = DataAccess()
 
+def spatial_ref(headers, path, RESULT_OFFSET, RESULT_RECORD_COUNT):
+    URL = getattr(config, 'BASE_URL') + path + '/query?outFields=*&resultOffset=' + str(RESULT_OFFSET) + '&resultRecordCount=' + str(RESULT_RECORD_COUNT) + '&f=json'
+    req = requests.get(URL, headers=headers)       
+    convert_to_text = req.text
+    convert_to_json = json.loads(convert_to_text)
+    spatial_ref = convert_to_json['spatialReference']        
+    return spatial_ref
 
 def stream_json(clean):
     first = True
@@ -127,5 +137,3 @@ if __name__ == '__main__':
     })
 
     # Start the CherryPy WSGI web server
-    cherrypy.engine.start()
-    cherrypy.engine.block()
