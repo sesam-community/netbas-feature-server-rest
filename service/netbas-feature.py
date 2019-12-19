@@ -7,7 +7,7 @@ import cherrypy
 from time import sleep
 
 app = Flask(__name__)
- 
+
 # Environment variables
 required_env_vars = ["BASE_URL", "ENTITIES_PATH", "NEXT_PAGE", "RESULT_RECORD_COUNT"]
 optional_env_vars = ["LOG_LEVEL", "PORT"]
@@ -70,7 +70,11 @@ class DataAccess:
             res = json.loads(req.content.decode('utf-8-sig'))
             logger.info(res)
             NEXT_PAGE = res.get(getattr(config, "NEXT_PAGE"))
-            spatial_entity = spatial_ref(headers, path, RESULT_OFFSET, RESULT_RECORD_COUNT)
+            try:
+                spatial_entity = spatial_ref(headers, path, RESULT_OFFSET, RESULT_RECORD_COUNT)
+            except Exception as e:
+                logger.error(f"Could not get spatial reference. Exiting with error : {e}")
+            
             for entity in res.get(getattr(config, "ENTITIES_PATH", "features")):
 
                 yield(entity)
@@ -102,7 +106,7 @@ def stream_json(clean):
     yield ']'
 
 def spatial_ref(headers, path, RESULT_OFFSET, RESULT_RECORD_COUNT):
-    response = requests.get(target_url)
+    response = requests.get(target_url, headers=headers)
     response_json = json.loads(response.text)
     spatial_reference = response_json['spatialReference']
     return spatial_reference
@@ -135,3 +139,5 @@ if __name__ == '__main__':
     })
 
     # Start the CherryPy WSGI web server
+    cherrypy.engine.start()
+    cherrypy.engine.block()
