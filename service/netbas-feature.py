@@ -1,19 +1,20 @@
-from flask import Flask, request, Response
+from flask import Flask, Response
 import os
+from sesamutils import sesam_logger
 import requests
-import logging
 import json
-import cherrypy
-from time import sleep
 
 app = Flask(__name__)
+logger = sesam_logger("Steve the logger", app=app)
 
 # Environment variables
-required_env_vars = ["BASE_URL", "ENTITIES_PATH", "NEXT_PAGE", "RESULT_RECORD_COUNT"]
-optional_env_vars = ["LOG_LEVEL", "PORT"]
+required_env_vars = ["BASE_URL", "ENTITIES_PATH", "RESULT_RECORD_COUNT"]
+optional_env_vars = ["LOG_LEVEL", "PORT", "START", "END"]
+
 
 class AppConfig(object):
     pass
+
 
 config = AppConfig()
 
@@ -30,69 +31,59 @@ for env_var in optional_env_vars:
     if value:
         setattr(config, env_var, value)
 
-# Set up logging
-format_string = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-logger = logging.getLogger('netbas-feature-server')
-stdout_handler = logging.StreamHandler()
-stdout_handler.setFormatter(logging.Formatter(format_string))
-logger.addHandler(stdout_handler)
 
-loglevel = getattr(config, "LOG_LEVEL", "INFO")
-level = logging.getLevelName(loglevel.upper())
-if not isinstance(level, int):
-    logger.warning("Unsupported log level defined. Using default level 'INFO'")
-    level = logging.INFO
-logger.setLevel(level)
-
-class DataAccess:
-
-#main get function, uses the documentation for getting all data fields that are relevant and not static. path is input from pipe.
-    def __get_all_paged_entities(self, path, args):
-        logger.info("Fetching data from paged url: %s", path)
-        NEXT_PAGE = True
-        page_counter = 1
-        headers={"Content-Type":"application/json","Accept":"application/json"}
-        RESULT_OFFSET = 0
-        RESULT_RECORD_COUNT = getattr(config, 'RESULT_RECORD_COUNT', 1000)
-        while NEXT_PAGE is not False:
-
-            URL = getattr(config, 'BASE_URL') + path + '/query?outFields=*&resultOffset=' + str(RESULT_OFFSET) + '&resultRecordCount=' + str(RESULT_RECORD_COUNT) + '&f=json'
-            if os.environ.get('sleep') is not None:
-                logger.info("sleeping for %s milliseconds", os.environ.get('sleep'))
-                sleep(float(os.environ.get('sleep')))
-
-            logger.info("Fetching data from url: %s", URL)
-            req = requests.get(URL, headers=headers)
-
+def get_paged_entities(path):
+    logger.info("Fetching data from paged url: %s", path)
+    next_page = True
+    result_offset = 0
+    result_record_count = getattr(config, 'RESULT_RECORD_COUNT', 2000)
+    start = getattr(config, 'START', 1)
+    end = getattr(config, 'END', 1000)
+    entities_element = getattr(config, 'ENTITIES_PATH', 'features')
+    while next_page is True:
+        try: 
+            url = getattr(config, 'BASE_URL') + path + '/query?outFields=*&resultOffset=' + str(result_offset) + '&resultRecordCount=' + str(result_record_count) + '&f=json'
+            logger.info("Fetching data from url: %s", url)
+        
+            req = requests.get(url)
             if not req.ok:
                 logger.error("Unexpected response status code: %d with response text %s" % (req.status_code, req.text))
                 raise AssertionError ("Unexpected response status code: %d with response text %s"%(req.status_code, req.text))
-            res = json.loads(req.content.decode('utf-8-sig'))
-            logger.info(res)
-            NEXT_PAGE = res.get(getattr(config, "NEXT_PAGE"))
-            try:
-                spatial_entity = spatial_ref(headers, path, RESULT_OFFSET, RESULT_RECORD_COUNT)
-            except Exception as e:
-                logger.error(f"Could not get spatial reference. Exiting with error : {e}")
             
-            for entity in res.get(getattr(config, "ENTITIES_PATH", "features")):
+            res = json.loads(req.content.decode('utf-8-sig'))
+            for entity in res[entities_element]:
+                yield entity
 
-                yield(entity)
-                yield ','
-                yield(spatial_entity)
-
-            if NEXT_PAGE is not False:
-                RESULT_OFFSET+=int(RESULT_RECORD_COUNT)
-
+            next_page = res["exceededTransferLimit"]
+            if next_page is not False:
+                logger.info(f"extending result as exceed page limit is still {next_page}")
+                result_offset+=int(result_record_count)
+                logger.info(f"Result offset is now {result_offset}")
+            
             else:
-                NEXT_PAGE= False
-        logger.info('Returning entities from %i pages', page_counter)
+                logger.info(f"currently on last page...")
 
-    def get_paged_entities(self,path, args):
-        print("getting all paged")
-        return self.__get_all_paged_entities(path, args)
+        except Exception as e:
+            logger.warning(f"Service not working correctly. Failing with error : {e}")
 
-data_access_layer = DataAccess()
+    if next_page is False:
+        for i in range(int(start),int(end)):
+            if next_page == "Done":
+                break
+
+            url = getattr(config, 'BASE_URL') + path + '/query?outFields=*&resultOffset=' + str(result_offset) + '&resultRecordCount=' + str(int(result_record_count)-i) + '&f=json'
+            req = requests.get(url)
+
+            res = json.loads(req.content.decode('utf-8-sig'))
+            next_page = res["exceededTransferLimit"]
+            if next_page is not True:
+                logger.info(f"still not correct length on last page...")
+            if next_page is True:
+                for entity in res[entities_element]:
+                    yield entity
+                logger.info(f"streamed data from last page...")
+                next_page = "Done"
+
 
 def stream_json(clean):
     first = True
@@ -105,20 +96,10 @@ def stream_json(clean):
         yield json.dumps(row)
     yield ']'
 
-def spatial_ref(headers, path, RESULT_OFFSET, RESULT_RECORD_COUNT):
-    response = requests.get(target_url, headers=headers)
-    response_json = json.loads(response.text)
-    spatial_reference = response_json['spatialReference']
-    return spatial_reference
-          
 
 @app.route("/<path:path>", methods=["GET"])
 def get(path):
-
-    if request.method == "GET":
-        path = path
-
-    entities = data_access_layer.get_paged_entities(path, args=request.args)
+    entities = get_paged_entities(path)
 
     return Response(
         stream_json(entities),
@@ -127,17 +108,4 @@ def get(path):
 
 
 if __name__ == '__main__':
-    cherrypy.tree.graft(app, '/')
-
-    # Set the configuration of the web server to production mode
-    cherrypy.config.update({
-        'environment': 'production',
-        'engine.autoreload_on': False,
-        'log.screen': True,
-        'server.socket_port': int(getattr(config, "PORT", 5000)),
-        'server.socket_host': '0.0.0.0'
-    })
-
-    # Start the CherryPy WSGI web server
-    cherrypy.engine.start()
-    cherrypy.engine.block()
+    app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)
