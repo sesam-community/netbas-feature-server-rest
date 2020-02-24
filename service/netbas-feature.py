@@ -9,7 +9,7 @@ logger = sesam_logger("Steve the logger", app=app)
 
 # Environment variables
 required_env_vars = ["BASE_URL", "ENTITIES_PATH", "RESULT_RECORD_COUNT"]
-optional_env_vars = ["LOG_LEVEL", "PORT", "START", "END"]
+optional_env_vars = ["LOG_LEVEL", "PORT"]
 
 
 class AppConfig(object):
@@ -34,55 +34,54 @@ for env_var in optional_env_vars:
 
 def get_paged_entities(path):
     logger.info("Fetching data from paged url: %s", path)
-    next_page = True
     result_offset = 0
-    result_record_count = getattr(config, 'RESULT_RECORD_COUNT', 2000)
-    start = getattr(config, 'START', 1)
-    end = getattr(config, 'END', 1000)
+    result_record_count = getattr(config, 'RESULT_RECORD_COUNT', 1000)
     entities_element = getattr(config, 'ENTITIES_PATH', 'features')
-    while next_page is True:
-        try: 
-            url = getattr(config, 'BASE_URL') + path + '/query?outFields=*&resultOffset=' + str(result_offset) + '&resultRecordCount=' + str(result_record_count) + '&f=json'
-            logger.info("Fetching data from url: %s", url)
+    url_count = getattr(config, 'BASE_URL') + path + '/query?returnCountOnly=True'
+    request_for_count = requests.get(url_count)
+    result_for_count = json.loads(request_for_count.content.decode('utf-8-sig'))
+    result_count = result_for_count["count"]
+    logger.info(f"Fetching count from url with value of : {result_count}")
+    count = 0
+    small_data_count = 0
+    result_count = result_count-1
+    while result_count > result_offset and count == 0:
+        expected_count = result_offset + int(result_record_count)
+
+        if expected_count > result_count and small_data_count == 0:
+            result_record_count = result_count+1
+            expected_count = result_count
         
-            req = requests.get(url)
-            if not req.ok:
-                logger.error("Unexpected response status code: %d with response text %s" % (req.status_code, req.text))
-                raise AssertionError ("Unexpected response status code: %d with response text %s"%(req.status_code, req.text))
-            
-            res = json.loads(req.content.decode('utf-8-sig'))
-            for entity in res[entities_element]:
-                yield entity
+        url = getattr(config, 'BASE_URL') + path + '/query?outFields=*&resultOffset=' + str(result_offset) + '&resultRecordCount=' + str(result_record_count) + '&f=json'
+        logger.info("Fetching data from url: %s", url)
+        
+        req = requests.get(url)
+        if not req.ok:
+            logger.error("Unexpected response status code: %d with response text %s" % (req.status_code, req.text))
+            raise AssertionError ("Unexpected response status code: %d with response text %s"%(req.status_code, req.text))
+        
+        res = json.loads(req.content.decode('utf-8-sig'))
 
-            next_page = res["exceededTransferLimit"]
-            if next_page is not False:
-                logger.info(f"extending result as exceed page limit is still {next_page}")
-                result_offset+=int(result_record_count)
-                logger.info(f"Result offset is now {result_offset}")
-            
+        for entity in res[entities_element]:
+            yield entity
+        
+        if result_count == expected_count and count == 0:
+            logger.info("all data fetched")
+            count = count + 1
+        
+        if expected_count < result_count:
+            small_data_count = small_data_count + 1
+            logger.info(f"extending result as exceed page limit is still True")
+            result_offset += int(result_record_count)
+            expected_count = result_offset + int(result_record_count)
+            if expected_count > result_count:
+                result_record_count = result_count-result_offset
             else:
-                logger.info(f"currently on last page...")
+                logger.info(f"Result offset is now {result_offset}")
 
-        except Exception as e:
-            logger.warning(f"Service not working correctly. Failing with error : {e}")
 
-    if next_page is False:
-        for i in range(int(start),int(end)):
-            if next_page == "Done":
-                break
-
-            url = getattr(config, 'BASE_URL') + path + '/query?outFields=*&resultOffset=' + str(result_offset) + '&resultRecordCount=' + str(int(result_record_count)-i) + '&f=json'
-            req = requests.get(url)
-
-            res = json.loads(req.content.decode('utf-8-sig'))
-            next_page = res["exceededTransferLimit"]
-            if next_page is not True:
-                logger.info(f"still not correct length on last page...")
-            if next_page is True:
-                for entity in res[entities_element]:
-                    yield entity
-                logger.info(f"streamed data from last page...")
-                next_page = "Done"
+def generator(path):
+    yield from get_paged_entities(path)
 
 
 def stream_json(clean):
@@ -99,7 +98,7 @@ def stream_json(clean):
 
 @app.route("/<path:path>", methods=["GET"])
 def get(path):
-    entities = get_paged_entities(path)
+    entities = generator(path)
 
     return Response(
         stream_json(entities),
