@@ -2,7 +2,11 @@
 
 For incremental sync towards feature-server layer in front of netbas.
 
-Environment variables that are required are BASE_URL, NEXT_PAGE, ENTITIES_PATH and RESULT_RECORD_COUNT 
+Environment variables that are required are BASE_URL, NEXT_PAGE, ENTITIES_PATH and RESULT_RECORD_COUNT
+
+
+## pitfalls...
+- result_record_count of 1000 is the only supported record count in the API a the moment.
 
 # System config
 ```

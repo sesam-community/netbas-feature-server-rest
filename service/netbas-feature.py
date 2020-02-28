@@ -38,7 +38,7 @@ def get_paged_entities(path):
     result_record_count = getattr(config, 'RESULT_RECORD_COUNT', 1000)
     entities_element = getattr(config, 'ENTITIES_PATH', 'features')
     url_count = getattr(config, 'BASE_URL') + path + '/query?returnCountOnly=True'
-    request_for_count = requests.get(url_count)
+    request_for_count = requests.get(url_count, verify=False)
     result_for_count = json.loads(request_for_count.content.decode('utf-8-sig'))
     result_count = result_for_count["count"]
     logger.info(f"Fetching count from url with value of : {result_count}")
@@ -55,7 +55,7 @@ def get_paged_entities(path):
         url = getattr(config, 'BASE_URL') + path + '/query?outFields=*&resultOffset=' + str(result_offset) + '&resultRecordCount=' + str(result_record_count) + '&f=json'
         logger.info("Fetching data from url: %s", url)
         
-        req = requests.get(url)
+        req = requests.get(url, verify=False)
         if not req.ok:
             logger.error("Unexpected response status code: %d with response text %s" % (req.status_code, req.text))
             raise AssertionError ("Unexpected response status code: %d with response text %s"%(req.status_code, req.text))
