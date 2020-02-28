@@ -2,7 +2,7 @@
 
 For incremental sync towards feature-server layer in front of netbas.
 
-Environment variables that are required are BASE_URL, NEXT_PAGE, ENTITIES_PATH and RESULT_RECORD_COUNT
+Environment variables that are required are BASE_URL, ENTITIES_PATH and RESULT_RECORD_COUNT
 
 
 ## pitfalls...
@@ -16,8 +16,7 @@ Environment variables that are required are BASE_URL, NEXT_PAGE, ENTITIES_PATH a
 	"docker":{
 		"environment": {
 			"BASE_URL":"base URL",
-			"ENTITIES_PATH": "features",
-			"NEXT_PAGE":"exceededReturnLimit",
+			"ENTITIES_PATH": "features",	
 			"RESULT_RECORD_COUNT": 1000
 	},
 	"image":"sesamcommunity/netbas-feature-server-rest",
