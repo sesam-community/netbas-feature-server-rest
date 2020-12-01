@@ -1,4 +1,4 @@
 Flask
 requests
 sesamutils
-requests_ntlm
+requests_ntlm==1.1.0
