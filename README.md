@@ -19,7 +19,7 @@ Environment variables that are required are BASE_URL, ENTITIES_PATH and RESULT_R
 			"ENTITIES_PATH": "features",	
 			"RESULT_RECORD_COUNT": 1000
 	},
-	"image":"sesamcommunity/netbas-feature-server-rest",
+	"image":"sesamcommunity/netbas-feature-server-rest:<release>",
 	"port":5000
 	},
 	"verify_ssl":true
