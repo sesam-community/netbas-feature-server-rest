@@ -3,13 +3,12 @@ import os
 from sesamutils import sesam_logger
 import requests
 import json
-from requests_ntlm import HttpNtlmAuth
 
 app = Flask(__name__)
 logger = sesam_logger("Steve the logger", app=app)
 
 # Environment variables
-required_env_vars = ["BASE_URL", "ENTITIES_PATH", "RESULT_RECORD_COUNT", "SYSTEM_USER", "SYSTEM_PASSWORD"]
+required_env_vars = ["BASE_URL", "ENTITIES_PATH", "RESULT_RECORD_COUNT"]
 optional_env_vars = ["LOG_LEVEL", "PORT"]
 
 
@@ -38,10 +37,8 @@ def get_paged_entities(path):
     result_offset = 0
     result_record_count = getattr(config, 'RESULT_RECORD_COUNT', 1000)
     entities_element = getattr(config, 'ENTITIES_PATH', 'features')
-    user = getattr(config, 'SYSTEM_USER')
-    password = getattr(config, 'SYSTEM_PASSWORD')
     url_count = getattr(config, 'BASE_URL') + path + '/query?returnCountOnly=True'
-    request_for_count = requests.get(url=url_count, auth=HttpNtlmAuth(user, password), verify=False)
+    request_for_count = requests.get(url_count, verify=False)
     result_for_count = json.loads(request_for_count.content.decode('utf-8-sig'))
     result_count = result_for_count["count"]
     logger.info(f"Fetching count from url with value of : {result_count}")
@@ -58,18 +55,16 @@ def get_paged_entities(path):
         url = getattr(config, 'BASE_URL') + path + '/query?outFields=*&resultOffset=' + str(result_offset) + '&resultRecordCount=' + str(result_record_count) + '&f=json'
         logger.info("Fetching data from url: %s", url)
         
-        req = requests.get(url=url, auth=HttpNtlmAuth(user, password), verify=False)
+        req = requests.get(url, verify=False)
         if not req.ok:
             logger.error("Unexpected response status code: %d with response text %s" % (req.status_code, req.text))
             raise AssertionError ("Unexpected response status code: %d with response text %s"%(req.status_code, req.text))
         
         res = json.loads(req.content.decode('utf-8-sig'))
+        logger.error("REQ RESPONSE - " + str(res))
 
         for entity in res[entities_element]:
-            try:
-                yield entity
-            except Exception as e:
-                logger.error(f"Failing to stream entity with error: {e}")
+            yield entity
         
         if result_count == expected_count and count == 0:
             logger.info("all data fetched")
@@ -88,6 +83,7 @@ def get_paged_entities(path):
 
 def generator(path):
     yield from get_paged_entities(path)
+
 
 def stream_json(clean):
     first = True
