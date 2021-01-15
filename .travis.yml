@@ -1,6 +1,4 @@
-
 sudo: required
-
 
 language: python
 python:
@@ -12,4 +10,5 @@ services:
 script: true
 
 after_success:
-- bash <(curl -s https://raw.githubusercontent.com/4hlberg/travis-docker-build-sh/master/after_success.sh)
+
+- bash <(curl -s https://raw.githubusercontent.com/sesam-community/guidelines/master/after_success.sh)
