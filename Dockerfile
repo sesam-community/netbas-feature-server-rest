@@ -1,5 +1,4 @@
 FROM python:3.6-alpine
-MAINTAINER Philip Ahlberg "philip.ahlberg@sesam.io"
 COPY ./service /service
 
 RUN apk update \

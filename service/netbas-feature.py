@@ -66,7 +66,10 @@ def get_paged_entities(path):
         res = json.loads(req.content.decode('utf-8-sig'))
 
         for entity in res[entities_element]:
-            yield entity
+            try:
+                yield entity
+            except Exception as e:
+                logger.error(f"Failing to stream entity with error: {e}")
         
         if result_count == expected_count and count == 0:
             logger.info("all data fetched")
