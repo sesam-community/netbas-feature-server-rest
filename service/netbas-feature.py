@@ -89,7 +89,6 @@ def get_paged_entities(path):
 def generator(path):
     yield from get_paged_entities(path)
 
-
 def stream_json(clean):
     first = True
     yield '['
