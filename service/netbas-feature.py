@@ -61,6 +61,7 @@ def get_paged_entities(path):
             raise AssertionError ("Unexpected response status code: %d with response text %s"%(req.status_code, req.text))
         
         res = json.loads(req.content.decode('utf-8-sig'))
+        logger.error("REQ RESPONSE - " + str(res))
 
         for entity in res[entities_element]:
             yield entity
