@@ -38,12 +38,14 @@ def get_paged_entities(path):
     result_offset = 0
     result_record_count = getattr(config, 'RESULT_RECORD_COUNT', 1000)
     entities_element = getattr(config, 'ENTITIES_PATH', 'features')
-    url_count = getattr(config, 'BASE_URL') + path + '/query?returnCountOnly=True'
     user = getattr(config, 'SYSTEM_USER')
     password = getattr(config, 'SYSTEM_PASSWORD')
     url_count = getattr(config, 'BASE_URL') + path + '/query?returnCountOnly=True'
     request_for_count = requests.get(url=url_count, auth=HttpNtlmAuth(user, password), verify=False)
     result_for_count = json.loads(request_for_count.content.decode('utf-8-sig'))
+    
+    logger.error('COUNT RESPONSE -'+ str(result_for_count))
+    
     result_count = result_for_count["count"]
     logger.info(f"Fetching count from url with value of : {result_count}")
     count = 0
@@ -59,7 +61,7 @@ def get_paged_entities(path):
         url = getattr(config, 'BASE_URL') + path + '/query?outFields=*&resultOffset=' + str(result_offset) + '&resultRecordCount=' + str(result_record_count) + '&f=json'
         logger.info("Fetching data from url: %s", url)
         
-        req = requests.get(url=url_count, auth=HttpNtlmAuth(user, password), verify=False)
+        req = requests.get(url=url, auth=HttpNtlmAuth(user, password), verify=False)
         if not req.ok:
             logger.error("Unexpected response status code: %d with response text %s" % (req.status_code, req.text))
             raise AssertionError ("Unexpected response status code: %d with response text %s"%(req.status_code, req.text))
